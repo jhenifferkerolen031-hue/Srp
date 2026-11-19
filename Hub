@@ -1,0 +1,417 @@
+--[[
+  pvp universal v14 — Aimbot + ESP + Radar 3D + Misc + atalhos PC + botões Mobile (qualquer rig)
+  Roblox (Luau) · R6 + R15 + rigs custom · script único
+  Esconder/mostrar: barrinha branca de baixo (toque/clique) ou RightShift (muda na aba Configurações).
+
+  v14.1 (arrumado): aba Mira vem primeiro; acento preto no lugar do roxo; setas/marcas desenhadas (acabou o []);
+  ESP separado em grupos (Geral, Caixa completa, Info, Corpo, Tracer, Chams, Setas, Radar, Cores, Player+).
+
+  v14:
+  · GUI nova: menu com barra lateral de ícones (ESP, Mira, Extra, Configurações), linhas em pílula,
+    abre/fecha pela barrinha de baixo. As abas antigas viraram grupos dentro das abas; toque no título do grupo
+    pra recolher/abrir.
+  · Sem o quadrado cinza nas abas: o ícone não é mais tingido; a aba ativa ganha só uma barrinha de destaque.
+  · Preview do ESP no topo da aba ESP com o SEU personagem (clone do seu boneco; se o clone falhar, monta o avatar
+    pela descrição da sua conta). Fundo escuro automático quando a cor do ESP é branca.
+
+  v12:
+  · Setas sempre visíveis; esqueleto neon; head dot novo; anel no chão futurista; 18 estilos de crosshair.
+  · Luz (fullbright / hora fixa / sem efeitos) num gerenciador só (sem piscar); marcadores 3D do Ghost e da posição salva.
+  · Tudo começa desligado; Prompt instantâneo é o único da família de prompts; sem 'levantar do assento'.
+
+  v11:
+  · Notificação nova no canto de baixo à direita (nome da função + ativado/desativado) pra tudo que você liga/desliga.
+  · Removidos: auto-interagir, auto ClickDetector e "pular assentos". Anti-AFK agora vem desligado (tudo começa desligado).
+  · Misc: "Esticar tela" (resolução esticada, separado do FOV). Teleporte sempre trava antes (sem botão).
+  · Radar 2D redesenhado: anéis, cone de visão, varredura, N/L/S/O girando, seta de altura, nomes opcionais.
+  · Arceus X: espera jogo/câmera carregarem; GUI com fallback gethui -> CoreGui -> PlayerGui.
+
+  v10:
+  · Chams novo: sólido por parte do corpo (padrão) ou Highlight; pulsante; 2 cores por visibilidade.
+  · ESP de player+: dinheiro/atributos/idade/ID/arma/assento, anel no chão, lista de players, alerta de perto, entrou/saiu.
+  · Misc: Interação Turbo (prompt instantâneo + auto-interagir), anti-AFK, FOV, zoom, teleporte, spectate, rejoin/hop.
+
+  v9:
+  · Preview do ESP = seu personagem real (reclona sozinho se falhar) e sempre mostra o ESP.
+  · Fly por plataforma agora vai RÁPIDO PRA FRENTE na altura fixa (sem subir/descer sozinho).
+  · Speed novo: "Cadência" (passada humanizada com pulsos, micro-pausas e teto de média).
+  · Anti-Ragdoll (Misc): nunca cai / levanta na hora.
+  · Botões do mobile: letra branca normal, sem verde e sem brilho.
+  · ESP só de jogadores (sem NPC/itens) + muitas opções novas.
+
+  v8:
+  · Fly por plataforma invisível seguindo seus pés (Espaço sobe, Ctrl/C desce).
+  · Noclip que tira a colisão das paredes à frente (visíveis, atravessáveis), distância configurável.
+  · Speed com suavização (rampa + variação) e modo burst, nos dois modos: impulso e CFrame.
+  · Preview do ESP já abre com o seu avatar.
+  · Aba PC: atalhos de teclado configuráveis pra cada função.
+  · Aba Mobile: botões quadrados pretos na tela pra cada função (arrastar, travar, tamanho, transparência).
+]]
+
+if not game:IsLoaded() then game.Loaded:Wait() end
+local Players          = game:GetService("Players")
+local RunService       = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace        = game:GetService("Workspace")
+local HttpService      = game:GetService("HttpService")
+
+local LocalPlayer = Players.LocalPlayer
+while not LocalPlayer do task.wait(0.1); LocalPlayer = Players.LocalPlayer end
+local Camera = Workspace.CurrentCamera
+while not Camera do task.wait(0.1); Camera = Workspace.CurrentCamera end
+
+local ENV = (getgenv and getgenv()) or _G
+if ENV.PvpUniversalCleanup then pcall(ENV.PvpUniversalCleanup) end
+
+------------------------------------------------------------------
+-- ESTADO / TEMA
+------------------------------------------------------------------
+local S = {
+	-- aimbot
+	Aim = false, ShowFov = false, FovFill = false, FovSize = 150, FovColor = 1,
+	Wall = false, Team = false, Sticky = false, Priority = "cross",
+	Bone = "Head", Mode = "auto", Smooth = 30, AimDist = 1500,
+	Predict = 0, Deadzone = 0, AimOffset = 0, IgnoreFF = false, IgnoreFriends = false,
+	ShowTarget = false, TargetHL = false, Cross = false, CrossColor = 1, CrossSize = 14, AimKey = "None",
+	-- esp
+	Esp = false, Box = false, BoxStyle = "Corner", BoxFill = false, BoxThick = 2,
+	Skeleton = false, HeadDot = false, Name = false, NameMode = "Display",
+	Health = false, HealthTxt = false, Dist = false, Tool = false, Tracer = false, TracerFrom = "Bottom",
+	Chams = false, ChamsAlpha = 60, LookLine = false, Arrows = false, ArrowSize = 22,
+	VisCheck = false, Rainbow = false, TeamColor = false, FriendColor = false, HideTeam = false,
+	MaxDist = 2000, EspColor = 2, SkelColor = 1, SkelThick = 2, TextSize = 12,
+	Radar = false, RadarRange = 300, RadarSize = 140, ShowCount = false, EspKey = "None",
+	PreviewModel = "avatar",
+	BoxOutline = false, FillAlpha = 15, CornerLen = 28, HPSide = "Left", HealthPct = false, TeamTag = false, Speed = false,
+	ChamsWall = false, ChamsOutline = false, TracerThick = 2, Npcs = false, AimNpcs = false,
+	BoxGrad = false, DistColor = false, State = false, VisText = false, LowHp = false, LookAlert = false,
+	TracerTo = "Feet", Joints = false, ChamsDual = false,
+	-- geral
+	ShowFps = false, Ghost = false, GhostDepth = 10,
+	-- v7
+	DistFade = false,
+	Radar3D = false, R3Radius = 12, R3Range = 200, R3Warn = 60, R3Labels = false, R3Lines = false, R3Color = 4,
+	SpeedOn = false, SpeedVal = 40, SpeedMode = "gait", JumpOn = false, JumpH = 18, InfJump = false,
+	Fly = false, FlySpeed = 40, Noclip = false, Fullbright = false,
+	-- v8
+	SpeedSmooth = false, SpeedBurst = false, FlyLook = false, NoclipDist = 10,
+	MenuKey = "RightShift", RadarKey = "None", FlyKey = "None", NoclipKey = "None", SpeedKey = "None",
+	JumpKey = "None", InfJumpKey = "None", FullKey = "None", GhostKey = "None", PcToast = true, PcHud = false,
+	MobAim = false, MobEsp = false, MobRadar = false, MobFly = false, MobNoclip = false, MobSpeed = false,
+	MobJump = false, MobInfJump = false, MobFull = false, MobGhost = false,
+	MobLock = false, MobSize = 64, MobAlpha = 15, MobNames = false, MobHide = false,
+	-- v9
+	FlyForward = false, FlyFwdSpeed = 90, AntiRagdoll = false, AntiRagKey = "None", MobAnti = false,
+	GaitAmp = 28, GaitCap = 100, PreviewAlways = false,
+	EspCustom = false, CR = 255, CG = 60, CB = 60,
+	TextOutline = false, TextFontSel = "Gotham", DistUnit = "stud", HPWidth = 3, OutlineAlpha = 25,
+	HeadDotScale = 100, LookLen = 4, OnlyVisible = false, MaxShown = 0,
+	TracerSame = false, TracerColor = 3, ChamsSame = false, ChamsColor = 3, InfoColor = 1,
+	Offscreen = false, SkelSame = false,
+	-- v10: chams novo + ESP de player extra
+	ChamsMode = "parts", ChamsPulse = false,
+	XMoney = false, XAttrs = false, XAge = false, XId = false, XArmed = false, XSeat = false,
+	XRing = false, XRingSize = 4, XNearest = false, XHideFriends = false,
+	XList = false, XListN = 8, XNear = false, XNearDist = 40, XJoin = false,
+	-- v10/v11: misc (tudo começa DESLIGADO, o player liga o que quiser)
+	PpInstant = false, PpRange = 1, PpNoLOS = false,
+	AntiAfk = false, FovOn = false, FovCam = 90, ZoomFree = false, ZoomMax = 500,
+	NoFx = false, TimeOn = false, TimeVal = 14, NamesAll = false, ClickTp = false,
+	StretchOn = false, StretchVal = 30, RadarNames = false,
+	ChamsKey = "None", MobChams = false, PpKey = "None", MobPp = false, StretchKey = "None", MobStretch = false,
+	-- v12: crosshair, marcadores, skeleton neon
+	CrossStyle = "plus", CrossThick = 2, CrossGap = 4, CrossOutline = false, CrossDot = false, CrossDotSize = 3, CrossAlpha = 0,
+	CrossSpin = 0, CrossDyn = false, CrossOnTarget = false, CrossRainbow = false, CrossCustom = false, CrossR = 0, CrossG = 255, CrossB = 200,
+	GhostMark = false, SaveMark = false, SkelGlow = false,
+}
+local DEFAULTS = {}
+for k, v in pairs(S) do DEFAULTS[k] = v end
+local G = {} -- estado do Ghost (clone atual)
+
+local P = {
+	Color3.fromRGB(255, 255, 255), Color3.fromRGB(235, 50, 60), Color3.fromRGB(80, 230, 120),
+	Color3.fromRGB(70, 200, 255), Color3.fromRGB(255, 210, 60), Color3.fromRGB(255, 140, 40),
+	Color3.fromRGB(255, 100, 200), Color3.fromRGB(155, 105, 245),
+	Color3.fromRGB(0, 255, 255), Color3.fromRGB(180, 255, 60), Color3.fromRGB(255, 0, 0), Color3.fromRGB(0, 120, 255),
+	Color3.fromRGB(255, 170, 190), Color3.fromRGB(120, 120, 120),
+}
+local C = {
+	bg = Color3.fromRGB(10, 22, 48), side = Color3.fromRGB(15, 32, 68), panel = Color3.fromRGB(18, 39, 82),
+	item = Color3.fromRGB(24, 52, 108), accent = Color3.fromRGB(115, 195, 255), accentDim = Color3.fromRGB(28, 60, 122),
+	text = Color3.fromRGB(150, 215, 255), dim = Color3.fromRGB(110, 180, 235), off = Color3.fromRGB(35, 75, 145),
+	line = Color3.fromRGB(38, 82, 158), prev = Color3.fromRGB(14, 30, 64), onAccent = Color3.fromRGB(8, 18, 38),
+}
+local VIS_COLOR    = Color3.fromRGB(80, 255, 120)
+local TARGET_COLOR = Color3.fromRGB(255, 235, 60)
+local FRIEND_COLOR = Color3.fromRGB(80, 170, 255)
+local HP_LOW, HP_HIGH = Color3.fromRGB(255, 60, 60), Color3.fromRGB(70, 255, 100)
+local HP_MID = Color3.fromRGB(255, 205, 60)
+local function hpColor(v)
+	if v > 0.5 then return HP_MID:Lerp(HP_HIGH, (v - 0.5) * 2) end
+	return HP_LOW:Lerp(HP_MID, v * 2)
+end
+
+------------------------------------------------------------------
+-- HELPERS
+------------------------------------------------------------------
+local conns = {}
+local function connect(sig, fn) local c = sig:Connect(fn); conns[#conns + 1] = c; return c end
+
+local function new(class, props, parent)
+	local o = Instance.new(class)
+	for k, v in pairs(props or {}) do o[k] = v end
+	if parent then o.Parent = parent end
+	return o
+end
+local function round(o, r) return new("UICorner", {CornerRadius = UDim.new(0, r or 8)}, o) end
+local function circle(o) return new("UICorner", {CornerRadius = UDim.new(1, 0)}, o) end
+
+-- roda uma função sem derrubar o resto do script se ela der erro (avisa uma vez no console)
+local warned = {}
+local function safe(name, fn, ...)
+	local ok, err = pcall(fn, ...)
+	if not ok and not warned[name] then
+		warned[name] = true
+		warn("[pvp universal] " .. name .. ": " .. tostring(err))
+	end
+end
+
+-- linha entre dois pontos 2D usando um Frame girado (funciona em qualquer executor, inclusive mobile)
+local function setLine(f, a, b, th, color)
+	local dx, dy = b.X - a.X, b.Y - a.Y
+	f.Size = UDim2.fromOffset(math.sqrt(dx * dx + dy * dy), th)
+	f.Position = UDim2.fromOffset((a.X + b.X) * 0.5, (a.Y + b.Y) * 0.5)
+	f.Rotation = math.deg(math.atan2(dy, dx))
+	f.BackgroundColor3 = color
+	f.Visible = true
+end
+local function place(f, x, y, w, h, color)
+	f.Position, f.Size, f.BackgroundColor3, f.Visible = UDim2.fromOffset(x, y), UDim2.fromOffset(w, h), color, true
+end
+
+-- amigos (consulta em segundo plano, com cache)
+local friendCache = {}
+local function isFriend(plr)
+	local c = friendCache[plr.UserId]
+	if c == nil then
+		friendCache[plr.UserId] = false
+		task.spawn(function()
+			local ok, r = pcall(function() return LocalPlayer:IsFriendsWith(plr.UserId) end)
+			friendCache[plr.UserId] = ok and r == true
+		end)
+		return false
+	end
+	return c
+end
+
+local function guiParent()
+	local ok, ui = pcall(function() return gethui and gethui() end)
+	if ok and ui then return ui end
+	ok, ui = pcall(function() return game:GetService("CoreGui") end)
+	if ok and ui then
+		local t = Instance.new("Folder")
+		local ok2 = pcall(function() t.Parent = ui end)
+		t:Destroy()
+		if ok2 then return ui end
+	end
+	return LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local gui = new("ScreenGui", {Name = "pvp universal", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 999})
+local espGui = new("ScreenGui", {Name = "pvp universal_ESP", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 998})
+local root0 = guiParent()
+gui.Parent, espGui.Parent = root0, root0
+
+-- v10: pasta separada pros chams (adornments / Highlight). Se não der pra usar o gethui/CoreGui, vai pro Workspace.
+local chamsRoot
+do
+	pcall(function()
+		local f = Instance.new("Folder")
+		f.Name = "pvp universal_CH"
+		f.Parent = root0:IsA("PlayerGui") and Workspace or root0
+		chamsRoot = f
+	end)
+	if not chamsRoot then chamsRoot = espGui end
+end
+
+-- seta em ">" girada (os caracteres ▾ ▸ ▴ não existem na fonte e viravam [])
+local function chevron(parent, pos, size, color)
+	return new("TextLabel", {
+		Size = size, Position = pos, BackgroundTransparency = 1, Text = ">", Font = Enum.Font.GothamBold,
+		TextSize = 16, TextColor3 = color, Rotation = 90,
+	}, parent)
+end
+
+local orders = {}
+local function nextOrder(p) orders[p] = (orders[p] or 0) + 1; return orders[p] end
+
+local function makeDraggable(handle, target, onTap, canDrag)
+	local dragging, dragStart, startPos, dragInput, moved
+	connect(handle.InputBegan, function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+			dragging, moved, dragStart, startPos = true, false, i.Position, target.Position
+			local c
+			c = i.Changed:Connect(function()
+				if i.UserInputState == Enum.UserInputState.End then
+					dragging = false
+					c:Disconnect()
+					if onTap and not moved then onTap() end
+				end
+			end)
+		end
+	end)
+	connect(handle.InputChanged, function(i)
+		if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then dragInput = i end
+	end)
+	connect(UserInputService.InputChanged, function(i)
+		if dragging and i == dragInput then
+			local d = i.Position - dragStart
+			if d.Magnitude > 6 then moved = true end
+			if canDrag and not canDrag() then return end
+			target.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+		end
+	end)
+end
+
+------------------------------------------------------------------
+-- JANELA (v14): menu azul escuro com opções azul claro; botão - em cima do avatar vira barra fina com +
+------------------------------------------------------------------
+local vp0 = Camera.ViewportSize
+local W, H = math.min(540, vp0.X - 16), math.min(350, vp0.Y - 24)
+local minimized = false
+local win, title, setMenuOpen, toggleMenu
+local tabs, pages, selectTab, addTab, panel
+
+do
+	local TS = game:GetService("TweenService")
+	local ICONS = {
+		ESP    = "rbxassetid://87536416766529",
+		Mira   = "rbxassetid://104186619599395",
+		Extra  = "rbxassetid://134303426816318",
+		Config = "rbxassetid://113024044312419",
+	}
+	local TAB_TITLE = {ESP = "ESP", Mira = "Mira", Extra = "Extra", Config = "Configurações"}
+	local TAB_ORDER = {Mira = 1, ESP = 2, Extra = 3, Config = 4}
+	local TAB_ALIAS = {
+		Aimbot = "Mira", Combate = "Mira", ESP = "ESP", Player = "Extra", Misc = "Extra",
+		PC = "Config", Mobile = "Config",
+	}
+
+	local main = new("Frame", {
+		Size = UDim2.fromOffset(W, H), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = C.bg, BorderSizePixel = 0, ClipsDescendants = true, Active = true, Visible = false,
+	}, gui)
+	round(main, 30)
+	new("UIStroke", {Color = C.line, Thickness = 1}, main)
+	local uiScale = new("UIScale", {Scale = 1}, main)
+	win = main
+
+	-- barra fina quando minimizado pelo botão - (com botão + no final)
+	local miniBar = new("Frame", {
+		Size = UDim2.fromOffset(210, 34), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = C.side, BorderSizePixel = 0, Active = true, Visible = false, ZIndex = 20,
+	}, gui)
+	round(miniBar, 17)
+	new("UIStroke", {Color = C.accent, Thickness = 1.2}, miniBar)
+
+	local miniDrag = new("TextButton", {
+		Size = UDim2.new(1, -40, 1, 0), Position = UDim2.fromOffset(0, 0), BackgroundTransparency = 1,
+		Text = "pvp universal v14", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = C.text,
+		TextXAlignment = Enum.TextXAlignment.Left, AutoButtonColor = false, ZIndex = 21,
+	}, miniBar)
+	new("UIPadding", {PaddingLeft = UDim.new(0, 14)}, miniDrag)
+
+	local plusBtn = new("TextButton", {
+		Size = UDim2.fromOffset(26, 26), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -4, 0.5, 0),
+		BackgroundColor3 = C.item, BorderSizePixel = 0, Text = "+", Font = Enum.Font.GothamBold,
+		TextSize = 16, TextColor3 = C.text, AutoButtonColor = false, ZIndex = 22,
+	}, miniBar)
+	circle(plusBtn)
+	new("UIStroke", {Color = C.accent, Thickness = 1}, plusBtn)
+
+	local function setMinimized(m)
+		minimized = m and true or false
+		if minimized then
+			main.Visible = false
+			miniBar.Visible = true
+		else
+			miniBar.Visible = false
+			if setMenuOpen then setMenuOpen(true) end
+		end
+	end
+
+	makeDraggable(miniDrag, miniBar, function() setMinimized(false) end)
+	connect(plusBtn.Activated, function() setMinimized(false) end)
+
+	-- barra lateral
+	local side = new("Frame", {
+		Size = UDim2.new(0, 62, 1, -20), Position = UDim2.fromOffset(10, 10), BackgroundColor3 = C.side, BorderSizePixel = 0,
+	}, main)
+	round(side, 31)
+	new("UIStroke", {Color = C.line, Thickness = 1}, side)
+	new("UIListLayout", {
+		Padding = UDim.new(0, 12), SortOrder = Enum.SortOrder.LayoutOrder,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center, VerticalAlignment = Enum.VerticalAlignment.Center,
+	}, side)
+	local BTN = math.clamp(math.floor((H - 20 - 24 - 3 * 12) / 4), 36, 48)
+
+	-- cabeçalho (arrasta a janela por aqui)
+	local head = new("Frame", {Size = UDim2.new(1, -84, 0, 56), Position = UDim2.fromOffset(84, 4), BackgroundTransparency = 1, Active = true}, main)
+	title = new("TextLabel", {
+		Size = UDim2.new(1, -180, 1, 0), Position = UDim2.fromOffset(2, 0), BackgroundTransparency = 1, Text = "",
+		Font = Enum.Font.GothamMedium, TextSize = 24, TextColor3 = C.text, TextXAlignment = Enum.TextXAlignment.Left,
+	}, head)
+	new("TextLabel", {
+		Size = UDim2.fromOffset(130, 14), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -44, 0.5, 0),
+		BackgroundTransparency = 1, Text = "pvp universal v14", Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = C.dim,
+		TextXAlignment = Enum.TextXAlignment.Right,
+	}, head)
+
+	-- botão '-' em cima da foto do boneco + avatar
+	local minusBtn = new("TextButton", {
+		Size = UDim2.fromOffset(20, 16), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 1),
+		BackgroundColor3 = C.item, BorderSizePixel = 0, Text = "-", Font = Enum.Font.GothamBold,
+		TextSize = 13, TextColor3 = C.text, AutoButtonColor = false, ZIndex = 6,
+	}, head)
+	round(minusBtn, 5)
+	new("UIStroke", {Color = C.accent, Thickness = 1}, minusBtn)
+	connect(minusBtn.Activated, function() setMinimized(true) end)
+
+	local avatar = new("ImageLabel", {
+		Size = UDim2.fromOffset(28, 28), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 19),
+		BackgroundColor3 = C.item, BorderSizePixel = 0,
+	}, head)
+	circle(avatar)
+	new("UIStroke", {Color = C.accent, Thickness = 1}, avatar)
+	task.spawn(function()
+		local ok, img = pcall(function()
+			return Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+		end)
+		if ok and img and avatar.Parent then avatar.Image = img end
+	end)
+	makeDraggable(head, main)
+
+	local holder = new("Frame", {Size = UDim2.new(1, -96, 1, -68), Position = UDim2.fromOffset(84, 60), BackgroundTransparency = 1}, main)
+
+	-- abas
+	tabs, pages = {}, {}
+	selectTab = function(name)
+		name = TAB_ALIAS[name] or name
+		for n, t in pairs(tabs) do
+			local on = n == name
+			t.ind.Visible = on
+			t.page.Visible = on
+		end
+		title.Text = TAB_TITLE[name] or name
+	end
+
+	addTab = function(name)
+		local key = TAB_ALIAS[name] or name
+		if tabs[key] then return tabs[key].page end
+		local b = new("TextButton", {
+			Size = UDim2.fromOffset(BTN, BTN), Text = "", BackgroundColor3 = C.side, BorderSizePixel = 0,
+			AutoButtonColor = false, LayoutOrder = TAB_ORDER[key] or 9,
+		}, side)
+		circle(b)
+		local img = new("ImageLabel", {
+			Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Image = ICONS[key] 
